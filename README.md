@@ -1,0 +1,2 @@
+# SAT_Solver_University_Gothenborg_Assignment
+SAT_SOLVER
