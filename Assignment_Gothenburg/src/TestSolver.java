@@ -24,8 +24,12 @@ public class TestSolver {
 	public static ISolver solver;
 	public static int MAXVAR;
 	public static int NBCLAUSES;
-	//public static String filename = "uf50-0999.cnf"; // simple file 
-	public static String filename = "ecos_features.dimacs"; // real assignment
+	public static int literalNB;
+	public static int curr_clause;
+	public static int count4pairFeat;
+
+	public static String filename = "uf50-0999.cnf"; // simple file 
+	//public static String filename = "ecos_features.dimacs"; // real assignment
 
 
 	public static void main(String[] args) throws TimeoutException, FileNotFoundException, ContradictionException{
@@ -61,57 +65,53 @@ public class TestSolver {
 
 
 			IProblem problem = solver;
-			while (problem.isSatisfiable()) {
 
-				tempString = reader.decode(problem.model());
-				System.out.println("Solution Number = " + nbSol);
-				System.out.println("Sol " + nbSol + " = " + tempString);
-				LinkedList<Integer>  negVal = extractNegVal(tempString);
+			if(!problem.isSatisfiable()){
+				System.out.println("Problem is UnSAT !");
+			} else {
+				while (problem.isSatisfiable()) {
 
-				nbSol = nbSol + 1;
-				if(nbSol == 2){
-					for (int i=0; i<negVal.size(); i++) {	
-						dfList.add(negVal.get(i));
-					}
-				}else {
-					//System.out.println("Number of Dead feature = " + dfList.size());
+					tempString = reader.decode(problem.model());
+					System.out.println("Sol Numb = " + nbSol);
+					//System.out.println("Sol " + nbSol + " = " + tempString);
+					LinkedList<Integer>  negVal = extractNegVal(tempString);
 
-					for (int i = 0; i < dfList.size(); i++){
+					nbSol = nbSol + 1;
+					if(nbSol == 2){
+						for (int i=0; i<negVal.size(); i++) {	
+							dfList.add(negVal.get(i));
+						}
+					}else {
+						//System.out.println("Number of Dead feature = " + dfList.size());
 
-						int currDF =  dfList.get(i);
-						//System.out.println("Current Dead Feature = " + currDF);
+						for (int i = 0; i < dfList.size(); i++){
 
-						if (negVal.contains(currDF)){
-							// true => common in both lists => proceed, move on
-							//System.out.println("Do nothing, currDF  = " + currDF);
-						}else { // not common in both lists => remove
-							dfList.remove((Integer)currDF);
-							//System.out.println("Delete, removed = " + currDF);
-							i--;
+							int currDF =  dfList.get(i);
+							//System.out.println("Current Dead Feature = " + currDF);
+
+							if (negVal.contains(currDF)){
+								// true => common in both lists => proceed, move on
+								//System.out.println("Do nothing, currDF  = " + currDF);
+							}else { // not common in both lists => remove
+								dfList.remove((Integer)currDF);
+								//System.out.println("Delete, removed = " + currDF);
+								i--;
+							}
 						}
 					}
-
-
-
 				}
-
-				if(true){
+				System.out.println("***** Operation ENDED! *****");
+				System.out.println("Problem is SAT " + " , Sol_NB = " + (nbSol-1));
+				System.out.println("Number of clauses with pair features = " + count4pairFeat);
+				System.out.println("-------------------------------------------------");
+				if (dfList.size() == 0){
+					System.out.println("No Dead Feature found in this problem!");
 				}else {
-					System.out.println("Unsatisfiable !");
-				}
-
-
-			}
-			System.out.println("***** Operation ENDED! *****");
-			System.out.println("Problem is SAT " + " , Sol_NB = " + (nbSol-1));
-
-			if (dfList.size() == 0){
-				System.out.println("No Dead Feature found in this problem!");
-			}else {
-				for (int j = 0; j < dfList.size(); ++j){
-					int deadFeature = dfList.get(j);
-					//System.out.println("Dead feature is : " + deadFeature);
-					deadFeatName(deadFeature);
+					for (int j = 0; j < dfList.size(); ++j){
+						int deadFeature = dfList.get(j);
+						//System.out.println("Dead feature is : " + deadFeature);
+						deadFeatName(deadFeature);
+					}
 				}
 			}
 		}catch (TimeoutException e) {
@@ -172,56 +172,64 @@ public class TestSolver {
 		int tmpVar;
 
 		boolean addClause = false;
-		while (sc.hasNextLine()){ 
+		while (sc.hasNextLine()){
 			String at_line = sc.nextLine();
-			//System.out.println(" line = " + at_line);
 			idx = 0;
-			// look for character with the index
 			char tempChar = at_line.charAt(idx);
-
 			StringBuilder sb_file = new StringBuilder();
-
 			// take a look @ 1st letter of each line 
-
-			// 'c' => comment, do nothing...
+			// 'c' => do nothing...
+			//System.out.println("line length = "+ at_line.length());
 			if(tempChar=='c'){
 				// nothing...
 				addClause = false;  
 				// 'p' => store number of variables and clauses
 			}else if (tempChar == 'p'){
-
 				for (int j = 0; j < at_line.length(); j++){
 					tempChar = at_line.charAt(j);
+					//System.out.println("character = " + tempChar + ", j = " + j + " , length of sb = " + sb_file.length() + " , tmpVar = " + tmpVar_in_lineP);
 					// in case of numbers => put them 2gether 
-					if(tempChar == '0' || tempChar == '1' 
+					//System.out.println("j = "+ j);
+					if((tempChar == '0' || tempChar == '1' 
 							|| tempChar == '2' || tempChar == '3' 
 							|| tempChar == '4' || tempChar == '5' 
 							|| tempChar == '6' || tempChar == '7' 
-							|| tempChar == '8' || tempChar == '9'){
+							|| tempChar == '8' || tempChar == '9')
+							&& (j != at_line.length() - 1)){
 						// => build string
 						sb_file.append(String.valueOf(tempChar));
-
-					} else if (tempChar == ' ' && sb_file.length() != 0) {
+						//System.out.println("number mode!");
+						//System.out.println("length of sb = " + sb_file.length() + " , tmpVar = " + tmpVar_in_lineP) ;
+					} else if (sb_file.length() != 0 && tmpVar_in_lineP == 0 && (j != at_line.length() - 1)) {
+						//System.out.println("saving number of variable...");
 						tmpVar_in_lineP = Integer.parseInt(sb_file.toString());
 						MAXVAR = tmpVar_in_lineP;
-
+						sb_file.setLength(0);
+						//System.out.println("variable = " + MAXVAR); 
 						// after saving the varNB, string should be emptied:
 					} else if (tempChar == ' '){
-						sb_file.setLength(0);
-
-						// 
+						//sb_file.setLength(0);
+						//System.out.println("espace mode!");
 						//} else if (tempChar == ' ' && tmpVar_in_lineP != 0) {
-					} else if (tempChar == ' ' && sb_file.length() == 0) {
-
+					} else if ((tempChar == '0' || tempChar == '1' 
+							|| tempChar == '2' || tempChar == '3' 
+							|| tempChar == '4' || tempChar == '5' 
+							|| tempChar == '6' || tempChar == '7' 
+							|| tempChar == '8' || tempChar == '9')
+							&& (j == at_line.length() - 1)) {
+						sb_file.append(String.valueOf(tempChar));
+						//System.out.println("value = " + sb_file.toString() + " , sb length = " +sb_file.length());
+						//System.out.println("saving number of clauses ... ");
 						tmpVar_in_lineP= Integer.parseInt(sb_file.toString());
 						NBCLAUSES = tmpVar_in_lineP;
-
+						//System.out.println("clause nb = " + NBCLAUSES);
 					}	else {
-						//System.out.println("sth went wrong!!!");
+						//System.out.println("NON useful strings!!!");
 					}
 				}
 				addClause = false;  
 				// number => example) 1 -2 4 0	
+				System.out.println("Number of variables = " + MAXVAR + " , Number of caluse = " + NBCLAUSES); 
 			}else{
 				addClause = true;  
 				sb_file.setLength(0);
@@ -244,7 +252,6 @@ public class TestSolver {
 						if (tempChar == '0') {
 							// end of line 
 							sb_file.setLength(0); // clear the string builder
-
 						} else {
 							tmpVar = Integer.parseInt(sb_file.toString());
 							//System.out.println("string builder = " + sb_file + ", integer = " + tmpVar + " , length = " + sb_file.length());
@@ -253,32 +260,24 @@ public class TestSolver {
 						}
 					}
 				}
-
+				literalNB = tempClauseList.size();
+				//System.out.println("This clause contains " + literalNB + " literals : ");
+			}	
+			int [] tmpClause = new int [literalNB]; // initialize array with list size
+				for (int k = 0; k < literalNB; k++){
+					//System.out.println("Init literal ["+ k + "] before operation = " + tmpClause[k]);
+					int tempListNum = tempClauseList.poll();
+					tmpClause[k] = tempListNum;
+					//System.out.println("literal ["+ (k+1) + "] = " + tmpClause[k]);
 			}
-			int size = tempClauseList.size();
-			//System.out.println("sizee: " + size);
-
-
-			int [] tmpClause = new int [size]; // initialize array with list size
-
-			for (int i=0; i < size; i++) {
-
-				//System.out.println("temp clause B4 = " + tmpClause[i]);
-
+			if (literalNB == 2){ // pair features A -> B
+				impGraph(tmpClause);
 			}
-			for (int k = 0; k < size; k++){
-				int tempListNum = tempClauseList.poll();
-				//System.out.println("list poll = "+ tempListNum);
-				//System.out.println("k value = " + k);
-				tmpClause[k] = tempListNum;
-				//System.out.println("Clause : " + tmpClause[k]);
-				//tempClauseList.remove(0);
-			}
-			//System.out.println("Clause : end" );
 
-			for (int kk=0; kk<size; kk++){
+			for (int kk=0; kk<literalNB; kk++){
 				//System.out.println("final clause = " + tmpClause[kk] );
 			}
+
 			if (addClause){
 				solver.addClause(new VecInt(tmpClause));
 			}
@@ -297,7 +296,7 @@ public class TestSolver {
 		int length_line;
 		int varNB_DF = 0;
 		StringBuilder DF = null;
-		
+
 		while(scan.hasNextLine()){
 			String lineDF = scan.nextLine();
 			//length_line = lineDF.length();
@@ -323,16 +322,16 @@ public class TestSolver {
 							&& sb_DF.length() == 0){
 						// => build string
 						//System.out.println("number MODE , " + " length = " + sb_DF.length());
-						
+
 						sb_DF.append(String.valueOf(tmpChar));
 						//System.out.println("string builder = " + sb_DF + " , length = " + sb_DF.length());
-						
+
 
 					} else if (tmpChar == ' ' && sb_DF.length() != 0) {
 						varNB_DF = Integer.parseInt(sb_DF.toString());
 						//System.out.println("var = " + varNB_DF);
 						sb_DF.setLength(0);//clear the string
-						
+
 					} else if (tmpChar == 'A' || tmpChar == 'B'
 							||tmpChar == 'C' || tmpChar == 'D'
 							||tmpChar == 'E' || tmpChar == 'F'
@@ -353,7 +352,7 @@ public class TestSolver {
 							||tmpChar == '8' || tmpChar == '9') {
 
 						//System.out.println("mixture");
-						
+
 						sb_DF.append(String.valueOf(tmpChar));
 						DF = sb_DF;
 						//System.out.println("string  = " + DF + " , length = " + sb_DF.length());
@@ -365,19 +364,19 @@ public class TestSolver {
 					} else {
 						//System.out.println("ELSE MODE ---!");
 					}
-
 				}
 			}
-
-
-
-
 		}
-
-
 	}
 
 
+	private static void impGraph(int[] inp_Arr) {
 
+
+		for (int p = 0; p<inp_Arr.length; p++){
+			//System.out.println("Literal = [" + p + "] = " + inp_Arr[p]);
+		}
+		count4pairFeat = count4pairFeat +1;
+	}
 }
 
